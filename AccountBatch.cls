@@ -14,6 +14,7 @@ global class AccountBatch implements Database.Batchable<sObject> {
 		mapOpenCaseAccount=new Map<String,List<Case>>();
 		mapClosedCaseAccount=new Map<String,List<Case>>();
 
+		//preparing map of Account and Contacts, Account Id as Key and Contacts under particular account as value
 		contactsList=[Select id,AccountId from Contact where AccountId != null];
 		for(Contact cont:contactsList){
 			if(mapContactAccount.containsKey(cont.AccountId)) {  
@@ -23,7 +24,8 @@ global class AccountBatch implements Database.Batchable<sObject> {
                         }
 		}
 
-
+		
+		//preparing map of Account and Open Cases, Account Id as Key and Open Cases under particular account as value
 		openCasesList=[Select id,AccountId from Case where IsClosed =:false and AccountId != null];
 		for(Case openCase:openCasesList){
 			if(mapOpenCaseAccount.containsKey(openCase.AccountId)) {  
@@ -34,6 +36,7 @@ global class AccountBatch implements Database.Batchable<sObject> {
 		}
 
 
+		//preparing map of Account and Closed Cases, Account Id as Key and Closed Cases under particular account as value
 		closedCasesList=[Select id,AccountId from Case where IsClosed =:true and AccountId != null];
 		for(Case closedCase:closedCasesList){
 			if(mapClosedCaseAccount.containsKey(closedCase.AccountId)) {  
@@ -46,17 +49,20 @@ global class AccountBatch implements Database.Batchable<sObject> {
 	}
 	
 	global Database.QueryLocator start(Database.BatchableContext BC) {
+		//taking all the Accounts with OpenActivities and ClosedActivities in inner query of Account
 		query='Select Id,Number_of_Contacts__c,Number_of_Closed_Cases__c,Number_of_Closed_Activities__c,Number_of_Open_Activities__c,Number_of_Open_Cases__c,(Select Id from ActivityHistories),(Select Id from OpenActivities) from Account';
 		return Database.getQueryLocator(query);
 	}
 
    	global void execute(Database.BatchableContext BC, List<Account> scope) {
+		//traversing Account List and checking number of Contacts,OpenActivities,ClosedActivities,Open Cases,Closed Cases
 		for(Account accObj:scope){
 			if(mapContactAccount.get(accObj.Id)!=null)
 			accObj.Number_of_Contacts__c=mapContactAccount.get(accObj.Id).size();
 			system.debug('...............'+mapClosedCaseAccount.get(accObj.Id));
 			if(mapClosedCaseAccount.get(accObj.Id)!=null)
 			accObj.Number_of_Closed_Cases__c=mapClosedCaseAccount.get(accObj.Id).size();
+			//Checking size of OpenActivities and ClosedActivities from inner query
 			if(accObj.ActivityHistories!=null)
 			accObj.Number_of_Closed_Activities__c=accObj.ActivityHistories.size();
 			if(accObj.OpenActivities!=null)
@@ -64,6 +70,7 @@ global class AccountBatch implements Database.Batchable<sObject> {
 			if(mapOpenCaseAccount.get(accObj.Id)!=null)
 			accObj.Number_of_Open_Cases__c=mapOpenCaseAccount.get(accObj.Id).size();
 		}
+		
 		List<Database.SaveResult> SR =  Database.update(scope);
 	}
 	
